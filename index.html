@@ -266,15 +266,15 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
     <div class="setup-step">
       <label>Firebase config — paste your config object here</label>
-      <textarea id="firebaseConfig" rows="8" style="width:100%;padding:10px 13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font-family:monospace;font-size:12px;background:var(--bg);outline:none;resize:vertical;color:var(--text);" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "databaseURL": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
+      <textarea id="firebaseConfig" rows="9" style="width:100%;padding:10px 13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font-family:monospace;font-size:12px;background:var(--bg);outline:none;resize:vertical;color:var(--text);">{
+  "apiKey": "AIzaSyA8zi2_uNfxpox0feBiNmsbVpOxftpKBK4",
+  "authDomain": "dlay-store.firebaseapp.com",
+  "databaseURL": "https://dlay-store-default-rtdb.firebaseio.com",
+  "projectId": "dlay-store",
+  "storageBucket": "dlay-store.firebasestorage.app",
+  "messagingSenderId": "951244679767",
+  "appId": "1:951244679767:web:2403914547ce543081d112"
+}</textarea>
       <div class="setup-hint">
         Get this from Firebase Console → Project Settings → Your apps → Web app → SDK setup.<br>
         See the <strong>SETUP_GUIDE.md</strong> file included with this download for step-by-step instructions.
@@ -377,12 +377,20 @@ function startApp() {
 
   let config;
   try {
-    // support both JSON object and JS object literal
-    const cleaned = configRaw.replace(/(\w+):/g, '"$1":').replace(/'/g, '"');
+    // Step 1: strip markdown links like [text](url) → just the url
+    let cleaned = configRaw.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2');
+    // Step 2: remove surrounding whitespace and optional variable declaration
+    cleaned = cleaned.replace(/^[\s\S]*?(\{)/, '{');
+    // Step 3: quote unquoted keys  apiKey: → "apiKey":
+    cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
+    // Step 4: swap single quotes for double quotes on values
+    cleaned = cleaned.replace(/:\s*'([^']+)'/g, ': "$1"');
+    // Step 5: remove trailing commas before } or ]
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
     config = JSON.parse(cleaned);
   } catch(e) {
     try { config = JSON.parse(configRaw); } catch(e2) {
-      showSetupError('Config format invalid. Make sure you paste the full JSON object from Firebase.');
+      showSetupError('Could not read config — please paste everything between the { } curly brackets from Firebase, exactly as shown in the SETUP_GUIDE.');
       return;
     }
   }
