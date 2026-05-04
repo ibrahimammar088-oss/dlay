@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLAY — Store Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #c0392b;
+  --red-light: #fdecea;
+  --red-dark: #962d22;
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --text: #1a1a1a;
+  --text-2: #555;
+  --text-3: #999;
+  --green: #0F6E56;
+  --green-light: #E1F5EE;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+/* ── SETUP SCREEN ── */
+#setupScreen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 20px;
+}
+.setup-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 40px 36px; max-width: 480px; width: 100%;
+}
+.setup-brand {
+  font-family: 'Cormorant Garamond', serif; font-size: 36px;
+  font-weight: 600; letter-spacing: 8px; text-align: center;
+  margin-bottom: 6px;
+}
+.setup-brand span { color: var(--red); }
+.setup-sub { text-align: center; font-size: 13px; color: var(--text-3); margin-bottom: 32px; }
+.setup-step { margin-bottom: 20px; }
+.setup-step label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2); display: block; margin-bottom: 6px; }
+.setup-step input {
+  width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+  font-size: 14px; color: var(--text); background: var(--bg); outline: none;
+}
+.setup-step input:focus { border-color: var(--red); }
+.setup-hint { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
+.setup-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.setup-btn {
+  width: 100%; background: var(--red); color: white; border: none;
+  border-radius: var(--radius-sm); padding: 12px; font-size: 15px;
+  font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500;
+  transition: background .15s;
+}
+.setup-btn:hover { background: var(--red-dark); }
+.setup-error { background: var(--red-light); color: var(--red-dark); font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 14px; display: none; }
+
+/* ── CONNECTING SCREEN ── */
+#connectingScreen {
+  display: none; align-items: center; justify-content: center;
+  min-height: 100vh; flex-direction: column; gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px; border: 2px solid var(--border-strong);
+  border-top-color: var(--red); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.connecting-text { font-size: 14px; color: var(--text-3); }
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 24px; display: flex; align-items: center;
+  justify-content: space-between; height: 60px;
+  position: sticky; top: 0; z-index: 100;
+}
+.brand { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; letter-spacing: 6px; }
+.brand span { color: var(--red); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; }
+.online-label { font-size: 12px; color: var(--text-3); }
+.user-badge {
+  background: var(--red-light); color: var(--red-dark);
+  font-size: 12px; font-weight: 500; padding: 5px 12px;
+  border-radius: 20px;
+}
+.change-user-btn {
+  font-size: 12px; color: var(--text-3); background: none; border: none;
+  cursor: pointer; text-decoration: underline; font-family: 'DM Sans', sans-serif;
+}
+
+/* ── LAYOUT ── */
+.layout { display: flex; min-height: calc(100vh - 60px); }
+.sidebar {
+  width: 200px; background: var(--surface); border-right: 1px solid var(--border);
+  padding: 24px 0; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;
+  position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto;
+}
+.nav-label { font-size: 10px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); padding: 0 20px 8px; margin-top: 16px; }
+.nav-label:first-child { margin-top: 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 20px;
+  cursor: pointer; color: var(--text-2); font-size: 13px; border: none;
+  background: none; width: 100%; text-align: left;
+  border-right: 2px solid transparent; transition: all .15s;
+}
+.nav-item:hover { background: var(--bg); color: var(--text); }
+.nav-item.active { color: var(--red); border-right-color: var(--red); background: var(--red-light); font-weight: 500; }
+.nav-icon { width: 16px; height: 16px; opacity: .7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.main { flex: 1; padding: 28px 28px 60px; overflow-x: hidden; }
+
+/* ── SYNC TOAST ── */
+#syncToast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--text); color: white; font-size: 13px;
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  z-index: 500; opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+#syncToast.show { opacity: 1; }
+
+/* ── STATS ── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.stat-card-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.stat-card-value { font-size: 28px; font-weight: 300; font-family: 'Cormorant Garamond', serif; line-height: 1; }
+
+/* ── PAGE HEADER ── */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+.page-title { font-size: 20px; font-weight: 500; }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-btn { font-size: 12px; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border-strong); background: none; cursor: pointer; color: var(--text-2); font-family: 'DM Sans', sans-serif; transition: all .15s; }
+.filter-btn:hover { background: var(--bg); }
+.filter-btn.active { background: var(--red-light); color: var(--red-dark); border-color: #e88; font-weight: 500; }
+
+/* ── GRID ── */
+.item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: box-shadow .2s, transform .15s; position: relative; }
+.card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+.card.sold-card { opacity: .55; }
+.sold-badge { position: absolute; top: 10px; right: 10px; background: #f5c4b3; color: #712B13; font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 20px; z-index: 2; letter-spacing: .5px; text-transform: uppercase; }
+.card-photo { width: 100%; height: 160px; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
+.card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.card-photo-placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; }
+.card-body { padding: 14px; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.card-name { font-size: 15px; font-weight: 500; }
+.card-total { font-size: 12px; color: var(--text-3); white-space: nowrap; margin-left: 6px; }
+.card-total.zero { color: var(--red); font-weight: 500; }
+.card-cat { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+.card-by { font-size: 11px; color: var(--text-3); margin-bottom: 12px; }
+.sec-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); margin-bottom: 6px; }
+.variant-block { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; }
+.variant-header { display: flex; align-items: center; gap: 7px; padding: 7px 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.v-dot { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); flex-shrink: 0; }
+.v-name { font-size: 12px; font-weight: 500; flex: 1; }
+.v-total { font-size: 11px; color: var(--text-3); }
+.v-so { font-size: 10px; padding: 2px 6px; border-radius: 8px; background: var(--red-light); color: var(--red-dark); margin-left: 4px; }
+.size-rows { padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+.size-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.size-name { font-size: 12px; min-width: 30px; }
+.size-name.zero { color: var(--text-3); text-decoration: line-through; }
+.size-qty { font-size: 12px; font-weight: 500; min-width: 20px; text-align: center; }
+.size-qty.zero { color: var(--red); }
+.qty-controls { display: flex; gap: 3px; }
+.qty-btn { width: 20px; height: 20px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); cursor: pointer; font-size: 14px; line-height: 1; color: var(--text-2); display: flex; align-items: center; justify-content: center; transition: background .1s; font-family: 'DM Sans', sans-serif; }
+.qty-btn:hover { background: var(--bg); }
+.card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.action-btn { font-size: 12px; padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: none; cursor: pointer; color: var(--text); font-family: 'DM Sans', sans-serif; transition: background .15s; }
+.action-btn:hover { background: var(--bg); }
+.action-btn.sell { color: var(--red-dark); border-color: #e88; }
+.action-btn.sell:hover { background: var(--red-light); }
+.action-btn.restore { color: var(--green); border-color: #5DCAA5; }
+.action-btn.restore:hover { background: var(--green-light); }
+.action-btn.del { color: var(--red); border-color: #e88; }
+.action-btn.del:hover { background: var(--red-light); }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-3); }
+.empty-state p { font-size: 15px; margin-bottom: 6px; }
+.empty-state small { font-size: 12px; }
+
+/* ── ADD FORM ── */
+.form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; max-width: 680px; }
+.form-section { margin-bottom: 22px; }
+.form-section-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.fg label { font-size: 12px; color: var(--text-2); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+.fg input, .fg select, .fg textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); background: var(--bg); outline: none; transition: border-color .15s; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--red); }
+.fg textarea { height: 70px; resize: vertical; }
+.fg .hint { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.photo-upload-area { border: 1.5px dashed var(--border-strong); border-radius: var(--radius); padding: 28px; text-align: center; cursor: pointer; background: var(--bg); position: relative; transition: border-color .15s; }
+.photo-upload-area:hover { border-color: var(--red); }
+.photo-upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.photo-upload-label { font-size: 13px; color: var(--text-3); }
+.photo-upload-label strong { display: block; font-size: 14px; color: var(--text-2); margin-bottom: 4px; }
+.photo-preview { max-height: 120px; border-radius: var(--radius-sm); margin-top: 10px; object-fit: cover; }
+.color-builder-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.cb-row { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.cb-header { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.cb-dot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); flex-shrink: 0; }
+.cb-name-txt { font-size: 13px; font-weight: 500; flex: 1; }
+.cb-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 18px; line-height: 1; padding: 0 2px; }
+.cb-sizes-area { padding: 10px 12px; }
+.cb-size-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.cb-size-row { display: flex; align-items: center; gap: 8px; }
+.cb-size-label { font-size: 13px; width: 40px; font-weight: 500; }
+.cb-size-input { width: 70px !important; padding: 5px 8px !important; font-size: 13px !important; }
+.cb-size-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 16px; }
+.add-size-row { display: flex; gap: 6px; margin-top: 6px; }
+.add-size-row input { flex: 1; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--surface); outline: none; }
+.add-size-row input:focus { border-color: var(--red); }
+.small-btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: none; cursor: pointer; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text-2); white-space: nowrap; transition: background .15s; }
+.small-btn:hover { background: var(--bg); }
+.add-color-row { display: flex; gap: 8px; align-items: center; margin-bottom: 0; }
+.color-picker-wrap { width: 38px; height: 38px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; flex-shrink: 0; }
+.color-picker-wrap input[type=color] { width: 100%; height: 100%; border: none; padding: 0; cursor: pointer; }
+.submit-btn { background: var(--red); color: white; border: none; border-radius: var(--radius-sm); padding: 11px 24px; font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: background .15s; }
+.submit-btn:hover { background: var(--red-dark); }
+.submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── MODAL ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); object-fit: contain; }
+.modal-close { position: fixed; top: 20px; right: 20px; background: rgba(255,255,255,.15); border: none; color: white; font-size: 24px; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  .sidebar { display: none; }
+  .main { padding: 16px 14px 70px; }
+  .form-row { grid-template-columns: 1fr; }
+  .brand { font-size: 22px; letter-spacing: 4px; }
+  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); z-index: 100; }
+  .mob-btn { flex: 1; padding: 12px 4px 10px; border: none; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text-3); font-size: 10px; font-family: 'DM Sans', sans-serif; }
+  .mob-btn.active { color: var(--red); }
+  .mob-btn svg { width: 20px; height: 20px; }
+}
+@media (min-width: 641px) { .mobile-nav { display: none; } }
+.panel { animation: fadeUp .2s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setupScreen">
+  <div class="setup-box">
+    <div class="setup-brand">DL<span>A</span>Y</div>
+    <div class="setup-sub">Store inventory — real-time shared access</div>
+
+    <div class="setup-step">
+      <label>Your name</label>
+      <input type="text" id="setupName" placeholder="e.g. Uncle Waleed, Ahmed, Sara...">
+    </div>
+
+    <hr class="setup-divider">
+
+    <div class="setup-step">
+      <label>Firebase config — paste your config object here</label>
+      <textarea id="firebaseConfig" rows="8" style="width:100%;padding:10px 13px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font-family:monospace;font-size:12px;background:var(--bg);outline:none;resize:vertical;color:var(--text);" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "databaseURL": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+      <div class="setup-hint">
+        Get this from Firebase Console → Project Settings → Your apps → Web app → SDK setup.<br>
+        See the <strong>SETUP_GUIDE.md</strong> file included with this download for step-by-step instructions.
+      </div>
+    </div>
+
+    <button class="setup-btn" onclick="startApp()">Connect &amp; Open DLAY</button>
+    <div class="setup-error" id="setupError"></div>
+  </div>
+</div>
+
+<!-- CONNECTING SCREEN -->
+<div id="connectingScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px;">
+  <div class="spinner"></div>
+  <div class="connecting-text">Connecting to database...</div>
+</div>
+
+<!-- MAIN APP (hidden until connected) -->
+<div id="appShell" style="display:none;">
+  <div class="topbar">
+    <div class="brand">DL<span>A</span>Y</div>
+    <div class="topbar-right">
+      <div class="online-dot" id="onlineDot" style="background:#ccc;"></div>
+      <span class="online-label" id="onlineLabel">Connecting...</span>
+      <div class="user-badge" id="userBadge"></div>
+      <button class="change-user-btn" onclick="changeUser()">change</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-label">Inventory</div>
+      <button class="nav-item active" onclick="showPanel('inventory')" id="nav-inventory">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 21h8M12 17v4" stroke-width="1.5" stroke-linecap="round"/></svg>
+        All items
+      </button>
+      <button class="nav-item" onclick="showPanel('sold')" id="nav-sold">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sold items
+      </button>
+      <div class="nav-label">Actions</div>
+      <button class="nav-item" onclick="showPanel('add')" id="nav-add">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Add new item
+      </button>
+    </nav>
+    <main class="main" id="mainContent"></main>
+  </div>
+
+  <div class="mobile-nav">
+    <button class="mob-btn active" onclick="showPanel('inventory')" id="mob-inventory">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" stroke-width="1.5"/><path d="M8 21h8M12 17v4" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Stock
+    </button>
+    <button class="mob-btn" onclick="showPanel('sold')" id="mob-sold">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Sold
+    </button>
+    <button class="mob-btn" onclick="showPanel('add')" id="mob-add">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Add
+    </button>
+  </div>
+</div>
+
+<!-- PHOTO MODAL -->
+<div class="modal-overlay" id="photoModal" onclick="closeModal()">
+  <button class="modal-close" onclick="closeModal()">✕</button>
+  <img class="modal-img" id="modalImg" src="" alt="">
+</div>
+
+<!-- SYNC TOAST -->
+<div id="syncToast"></div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<script>
+// ── STATE ──
+let db = null;
+let itemsRef = null;
+let items = {};
+let currentPanel = 'inventory';
+let currentFilter = 'All';
+let currentUser = '';
+let pendingColors = [];
+let pendingPhoto = '';
+const DEFAULT_SIZES = ['XS','S','M','L','XL'];
+
+// ── SETUP ──
+function startApp() {
+  const name = document.getElementById('setupName').value.trim();
+  const configRaw = document.getElementById('firebaseConfig').value.trim();
+  const errEl = document.getElementById('setupError');
+  errEl.style.display = 'none';
+
+  if (!name) { showSetupError('Please enter your name.'); return; }
+  if (!configRaw) { showSetupError('Please paste your Firebase config.'); return; }
+
+  let config;
+  try {
+    // support both JSON object and JS object literal
+    const cleaned = configRaw.replace(/(\w+):/g, '"$1":').replace(/'/g, '"');
+    config = JSON.parse(cleaned);
+  } catch(e) {
+    try { config = JSON.parse(configRaw); } catch(e2) {
+      showSetupError('Config format invalid. Make sure you paste the full JSON object from Firebase.');
+      return;
+    }
+  }
+
+  if (!config.apiKey || !config.databaseURL) {
+    showSetupError('Config is missing apiKey or databaseURL. Please check the SETUP_GUIDE.md file.');
+    return;
+  }
+
+  currentUser = name;
+  localStorage.setItem('dlay_user', name);
+  localStorage.setItem('dlay_config', JSON.stringify(config));
+
+  initFirebase(config);
+}
+
+function showSetupError(msg) {
+  const el = document.getElementById('setupError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function initFirebase(config) {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('connectingScreen').style.display = 'flex';
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    db = firebase.database();
+    itemsRef = db.ref('dlay/items');
+
+    db.ref('.info/connected').on('value', snap => {
+      const connected = snap.val();
+      document.getElementById('onlineDot').style.background = connected ? '#27ae60' : '#e74c3c';
+      document.getElementById('onlineLabel').textContent = connected ? 'Live' : 'Offline';
+    });
+
+    itemsRef.on('value', snap => {
+      items = snap.val() || {};
+      if (document.getElementById('appShell').style.display === 'none') {
+        document.getElementById('connectingScreen').style.display = 'none';
+        document.getElementById('appShell').style.display = 'block';
+        document.getElementById('userBadge').textContent = currentUser;
+        showPanel('inventory');
+      } else {
+        renderPanel(currentPanel);
+        showToast('Inventory updated');
+      }
+    });
+
+  } catch(e) {
+    document.getElementById('connectingScreen').style.display = 'none';
+    document.getElementById('setupScreen').style.display = 'flex';
+    showSetupError('Firebase connection failed: ' + e.message);
+  }
+}
+
+// Check saved config on load
+window.addEventListener('load', () => {
+  const savedConfig = localStorage.getItem('dlay_config');
+  const savedUser = localStorage.getItem('dlay_user');
+  if (savedConfig && savedUser) {
+    try {
+      const config = JSON.parse(savedConfig);
+      currentUser = savedUser;
+      document.getElementById('setupName').value = savedUser;
+      document.getElementById('firebaseConfig').value = JSON.stringify(config, null, 2);
+      initFirebase(config);
+    } catch(e) { /* show setup screen normally */ }
+  }
+});
+
+function changeUser() {
+  localStorage.removeItem('dlay_user');
+  localStorage.removeItem('dlay_config');
+  location.reload();
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('syncToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── NAVIGATION ──
+function showPanel(panel) {
+  currentPanel = panel;
+  ['inventory','sold','add'].forEach(p => {
+    const s = document.getElementById('nav-'+p);
+    const m = document.getElementById('mob-'+p);
+    if(s) s.classList.toggle('active', p===panel);
+    if(m) m.classList.toggle('active', p===panel);
+  });
+  if(panel === 'add') { pendingColors=[]; pendingPhoto=''; renderAddForm(); }
+  else renderPanel(panel);
+}
+
+function renderPanel(p) {
+  if(p==='inventory') renderInventory();
+  else if(p==='sold') renderSold();
+}
+
+// ── HELPERS ──
+function getItemsArray() { return Object.values(items); }
+function totalStock(item) { return (item.variants||[]).reduce((a,v)=>a+(v.sizes||[]).reduce((b,s)=>b+s.qty,0),0); }
+function colorTotal(v) { return (v.sizes||[]).reduce((a,s)=>a+s.qty,0); }
+function genId() { return 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2,5); }
+
+// ── STATS ──
+function statsHTML() {
+  const arr = getItemsArray();
+  const inStock = arr.filter(i=>!i.sold);
+  const sold = arr.filter(i=>i.sold);
+  const totalUnits = arr.reduce((a,i)=>a+totalStock(i),0);
+  const cats = new Set(arr.map(i=>i.cat)).size;
+  return `<div class="stats-row">
+    <div class="stat-card"><div class="stat-card-label">In stock</div><div class="stat-card-value">${inStock.length}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Sold items</div><div class="stat-card-value">${sold.length}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Total units</div><div class="stat-card-value">${totalUnits}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Categories</div><div class="stat-card-value">${cats}</div></div>
+  </div>`;
+}
+
+// ── CARD ──
+function cardHTML(item) {
+  const tot = totalStock(item);
+  const photoHtml = item.photo
+    ? `<img src="${item.photo}" alt="${item.name}" onclick="openModal('${item.id}')">`
+    : `<div class="card-photo-placeholder"><svg width="32" height="32" fill="none" stroke="#ccc" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.2"/><circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.2"/><path d="M21 15l-5-5L5 21" stroke-width="1.2"/></svg><span>No photo</span></div>`;
+
+  const variantsHTML = (item.variants||[]).map((v, vIdx) => {
+    const vTot = colorTotal(v);
+    const sizesHTML = (v.sizes||[]).map((s, sIdx) => `
+      <div class="size-row">
+        <span class="size-name${s.qty===0?' zero':''}">${s.s}</span>
+        <span class="size-qty${s.qty===0?' zero':''}">${s.qty}</span>
+        ${!item.sold ? `<div class="qty-controls">
+          <button class="qty-btn" onclick="adjustQty('${item.id}',${vIdx},${sIdx},-1)">−</button>
+          <button class="qty-btn" onclick="adjustQty('${item.id}',${vIdx},${sIdx},1)">+</button>
+        </div>` : ''}
+      </div>`).join('');
+    return `<div class="variant-block">
+      <div class="variant-header">
+        <div class="v-dot" style="background:${v.hex}"></div>
+        <span class="v-name">${v.name}</span>
+        <span class="v-total">${vTot} left</span>
+        ${vTot===0?'<span class="v-so">sold out</span>':''}
+      </div>
+      <div class="size-rows">${sizesHTML}</div>
+    </div>`;
+  }).join('');
+
+  const actions = item.sold
+    ? `<button class="action-btn restore" onclick="restoreItem('${item.id}')">Restore</button>
+       <button class="action-btn del" onclick="deleteItem('${item.id}')">Delete</button>`
+    : `<button class="action-btn sell" onclick="markSold('${item.id}')">Mark all sold</button>
+       <button class="action-btn del" onclick="deleteItem('${item.id}')">Delete</button>`;
+
+  return `<div class="card${item.sold?' sold-card':''}">
+    ${item.sold?'<div class="sold-badge">Sold</div>':''}
+    <div class="card-photo">${photoHtml}</div>
+    <div class="card-body">
+      <div class="card-top">
+        <div class="card-name">${item.name}</div>
+        <div class="card-total${tot===0?' zero':''}">${tot===0?'out of stock':tot+' units'}</div>
+      </div>
+      <div class="card-cat">${item.cat}</div>
+      <div class="card-by">Added by ${item.addedBy}${item.sold?' · Sold by '+item.soldBy:''}</div>
+      <div class="sec-label">Stock by color &amp; size</div>
+      ${variantsHTML}
+      <div class="card-actions">${actions}</div>
+    </div>
+  </div>`;
+}
+
+// ── PANELS ──
+function renderInventory() {
+  const arr = getItemsArray();
+  const cats = [...new Set(arr.map(i=>i.cat))];
+  const inStock = arr.filter(i=>!i.sold);
+  const filtered = currentFilter==='All' ? inStock : inStock.filter(i=>i.cat===currentFilter);
+  const filterBtns = ['All',...cats].map(c=>`<button class="filter-btn${currentFilter===c?' active':''}" onclick="setFilter('${c}')">${c}</button>`).join('');
+  const grid = filtered.length
+    ? `<div class="item-grid">${filtered.map(cardHTML).join('')}</div>`
+    : `<div class="empty-state"><p>No items here yet.</p><small>Use "+ Add new item" to get started.</small></div>`;
+  document.getElementById('mainContent').innerHTML = `<div class="panel">${statsHTML()}<div class="page-header"><div class="page-title">All items in stock</div><div class="filter-row">${filterBtns}</div></div>${grid}</div>`;
+}
+
+function renderSold() {
+  const sold = getItemsArray().filter(i=>i.sold);
+  const grid = sold.length
+    ? `<div class="item-grid">${sold.map(cardHTML).join('')}</div>`
+    : `<div class="empty-state"><p>No sold items yet.</p></div>`;
+  document.getElementById('mainContent').innerHTML = `<div class="panel">${statsHTML()}<div class="page-header"><div class="page-title">Sold items</div></div>${grid}</div>`;
+}
+
+function setFilter(f) { currentFilter = f; renderInventory(); }
+
+// ── FIREBASE ACTIONS ──
+function adjustQty(itemId, vIdx, sIdx, delta) {
+  const item = items[itemId];
+  if(!item || item.sold) return;
+  const newQty = Math.max(0, item.variants[vIdx].sizes[sIdx].qty + delta);
+  itemsRef.child(itemId).child('variants').child(vIdx).child('sizes').child(sIdx).child('qty').set(newQty);
+}
+
+function markSold(id) {
+  itemsRef.child(id).update({ sold: true, soldBy: currentUser });
+}
+
+function restoreItem(id) {
+  itemsRef.child(id).update({ sold: false, soldBy: '' });
+}
+
+function deleteItem(id) {
+  if(!confirm('Delete this item? This cannot be undone.')) return;
+  itemsRef.child(id).remove();
+}
+
+// ── PHOTO MODAL ──
+function openModal(itemId) {
+  const item = items[itemId];
+  if(!item||!item.photo) return;
+  document.getElementById('modalImg').src = item.photo;
+  document.getElementById('photoModal').classList.add('open');
+}
+function closeModal() { document.getElementById('photoModal').classList.remove('open'); }
+
+// ── ADD FORM ──
+function renderAddForm() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="panel">
+      <div class="page-header"><div class="page-title">Add new item</div></div>
+      <div class="form-card">
+        <div class="form-section">
+          <div class="form-section-title">Photo</div>
+          <div class="photo-upload-area" id="uploadArea">
+            <input type="file" accept="image/*" id="photoInput" onchange="handlePhoto(event)">
+            <div class="photo-upload-label" id="uploadLabel">
+              <strong>Tap to upload a photo</strong>
+              JPG, PNG or WEBP
+            </div>
+            <img class="photo-preview" id="previewImg" style="display:none">
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">Item details</div>
+          <div class="form-row">
+            <div class="fg"><label>Item name</label><input type="text" id="f-name" placeholder="e.g. Linen Blazer"></div>
+            <div class="fg"><label>Category</label>
+              <select id="f-cat"><option>Tops</option><option>Bottoms</option><option>Outerwear</option><option>Dresses</option><option>Accessories</option><option>Footwear</option></select>
+            </div>
+          </div>
+          <div class="fg"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Any extra info..."></textarea></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">Colors &amp; sizes</div>
+          <div class="fg">
+            <label>Add a color</label>
+            <div class="add-color-row">
+              <div class="color-picker-wrap"><input type="color" id="colorPicker" value="#1a1a1a"></div>
+              <input type="text" id="colorName" placeholder="Color name (e.g. Navy, Black...)" style="flex:1;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);outline:none;">
+              <button class="small-btn" onclick="addColor()" style="height:38px">+ Add color</button>
+            </div>
+            <div class="hint">Add colors then set qty per size. Remove sizes you don't carry.</div>
+          </div>
+          <div class="color-builder-list" id="colorBuilderList"></div>
+        </div>
+        <button class="submit-btn" id="submitBtn" onclick="submitItem()">Add to inventory</button>
+      </div>
+    </div>`;
+
+  document.getElementById('colorName').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();addColor();} });
+  renderColorBuilder();
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0]; if(!file) return;
+  // Resize to max 800px to keep Firebase storage small
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX || h > MAX) {
+        if(w > h) { h = Math.round(h * MAX/w); w = MAX; }
+        else { w = Math.round(w * MAX/h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.8);
+      const imgEl = document.getElementById('previewImg');
+      imgEl.src = pendingPhoto; imgEl.style.display = 'block';
+      document.getElementById('uploadLabel').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function addColor() {
+  const hex = document.getElementById('colorPicker').value;
+  const name = document.getElementById('colorName').value.trim() || ('Color '+(pendingColors.length+1));
+  pendingColors.push({ hex, name, sizes: DEFAULT_SIZES.map(s=>({s,qty:0})) });
+  document.getElementById('colorName').value = '';
+  renderColorBuilder();
+}
+
+function removeColor(ci) { pendingColors.splice(ci,1); renderColorBuilder(); }
+function addSizeToColor(ci) {
+  const inp = document.getElementById('ns_'+ci);
+  const val = inp.value.trim(); if(!val) return;
+  val.split(',').map(s=>s.trim()).filter(s=>s&&!pendingColors[ci].sizes.find(x=>x.s===s))
+    .forEach(s=>pendingColors[ci].sizes.push({s,qty:0}));
+  inp.value=''; renderColorBuilder();
+}
+function removeSizeFromColor(ci,si) { pendingColors[ci].sizes.splice(ci===ci?si:si,1); renderColorBuilder(); }
+function updateBuilderQty(ci,si,val) { pendingColors[ci].sizes[si].qty = Math.max(0,parseInt(val)||0); }
+
+function renderColorBuilder() {
+  const el = document.getElementById('colorBuilderList');
+  if(!el) return;
+  if(!pendingColors.length) { el.innerHTML=''; return; }
+  el.innerHTML = pendingColors.map((c,ci)=>`
+    <div class="cb-row">
+      <div class="cb-header">
+        <div class="cb-dot" style="background:${c.hex}"></div>
+        <span class="cb-name-txt">${c.name}</span>
+        <button class="cb-remove" onclick="removeColor(${ci})">×</button>
+      </div>
+      <div class="cb-sizes-area">
+        <div class="cb-size-rows">
+          ${c.sizes.map((s,si)=>`
+            <div class="cb-size-row">
+              <span class="cb-size-label">${s.s}</span>
+              <input class="cb-size-input" type="number" min="0" value="${s.qty}" oninput="updateBuilderQty(${ci},${si},this.value)">
+              <button class="cb-size-remove" onclick="removeSizeFromColor(${ci},${si})">×</button>
+            </div>`).join('')}
+        </div>
+        <div class="add-size-row">
+          <input type="text" id="ns_${ci}" placeholder="Add size (e.g. XXL, 40, 42)">
+          <button class="small-btn" onclick="addSizeToColor(${ci})">+ Size</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  pendingColors.forEach((_,ci)=>{
+    const inp = document.getElementById('ns_'+ci);
+    if(inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addSizeToColor(ci);}});
+  });
+}
+
+function submitItem() {
+  const name = document.getElementById('f-name').value.trim();
+  if(!name) { alert('Please enter an item name.'); return; }
+  if(!pendingColors.length) { alert('Please add at least one color.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const id = genId();
+  const newItem = {
+    id, name,
+    cat: document.getElementById('f-cat').value,
+    photo: pendingPhoto,
+    notes: document.getElementById('f-notes').value,
+    sold: false,
+    addedBy: currentUser,
+    soldBy: '',
+    variants: pendingColors.map(c=>({ hex:c.hex, name:c.name, sizes:[...c.sizes] })),
+    createdAt: Date.now()
+  };
+
+  itemsRef.child(id).set(newItem)
+    .then(() => { pendingColors=[]; pendingPhoto=''; showPanel('inventory'); })
+    .catch(e => { alert('Save failed: '+e.message); btn.disabled=false; btn.textContent='Add to inventory'; });
+}
+</script>
+</body>
+</html>
